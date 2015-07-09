@@ -26,13 +26,13 @@ public class TCBlobDownloadManager {
     public static let sharedInstance = TCBlobDownloadManager()
 
     /// Instance of the underlying class implementing `NSURLSessionDownloadDelegate`.
-    private let delegate: DownloadDelegate
+    public var delegate: DownloadDelegate
 
     /// If `true`, downloads will start immediatly after being created. `true` by default.
     public var startImmediatly = true
 
     /// The underlying `NSURLSession`.
-    public let session: NSURLSession
+    public var session: NSURLSession
 
     /**
         Custom `NSURLSessionConfiguration` init.
@@ -145,7 +145,10 @@ public class TCBlobDownloadManager {
 }
 
 
-class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
+public class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
+
+    public var backgroundTransferCompletionHandler: (() -> Void)? = {}
+    
     var downloads: [Int: TCBlobDownload] = [:]
     let acceptableStatusCodes: Range<Int> = 200...299
 
@@ -155,11 +158,11 @@ class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
 
     // MARK: NSURLSessionDownloadDelegate
 
-    func URLSession(session: NSURLSession, downloadTask: NSURLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
+    public func URLSession(session: NSURLSession, downloadTask: NSURLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
         println("Resume at offset: \(fileOffset) total expected: \(expectedTotalBytes)")
     }
 
-    func URLSession(session: NSURLSession, downloadTask: NSURLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+    public func URLSession(session: NSURLSession, downloadTask: NSURLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         let download = self.downloads[downloadTask.taskIdentifier]!
         let progress = totalBytesExpectedToWrite == NSURLSessionTransferSizeUnknown ? -1 : Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
 
@@ -172,7 +175,7 @@ class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
         }
     }
 
-    func URLSession(session: NSURLSession, downloadTask: NSURLSessionDownloadTask, didFinishDownloadingToURL location: NSURL) {
+    public func URLSession(session: NSURLSession, downloadTask: NSURLSessionDownloadTask, didFinishDownloadingToURL location: NSURL) {
         let download = self.downloads[downloadTask.taskIdentifier]!
         var fileError: NSError?
         var resultingURL: NSURL?
@@ -184,7 +187,7 @@ class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
         }
     }
 
-    func URLSession(session: NSURLSession, task: NSURLSessionTask, didCompleteWithError sessionError: NSError?) {
+    public func URLSession(session: NSURLSession, task: NSURLSessionTask, didCompleteWithError sessionError: NSError?) {
         let download = self.downloads[task.taskIdentifier]!
         var error: NSError? = sessionError ?? download.error
         // Handle possible HTTP errors
@@ -208,6 +211,24 @@ class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
             download.delegate?.download(download, didFinishWithError: error, atLocation: download.resultingURL)
             download.completion?(error: error, location: download.resultingURL)
             return
+        }
+    }
+
+    public func URLSessionDidFinishEventsForBackgroundURLSession(session: NSURLSession) {
+        session.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) -> Void in
+
+            if downloadTasks.count == 0 {
+                
+                if let completionHandler = self.backgroundTransferCompletionHandler {
+
+                    NSOperationQueue.mainQueue().addOperationWithBlock({
+                        [unowned self] in
+
+                        completionHandler()
+                        self.backgroundTransferCompletionHandler = nil
+                    })
+                }
+            }
         }
     }
 }
