@@ -9,9 +9,9 @@
 import UIKit
 import TCBlobDownloadSwift
 
-class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
+public class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
 
-    static let sharedBackground = TCBlobBackgroundDownloadManager()
+    public static let sharedBackground = TCBlobBackgroundDownloadManager()
 
     convenience init() {
         let config = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier("tcblobdownloadmanager.background.session")
