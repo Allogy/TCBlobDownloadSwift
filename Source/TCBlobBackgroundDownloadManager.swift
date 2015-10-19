@@ -7,7 +7,6 @@
 //
 
 import UIKit
-import TCBlobDownloadSwift
 
 public class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
 
