@@ -30,20 +30,27 @@ class TCBlobDownloadManagerTests: XCTestCase {
         super.setUp()
         
         var error: NSError?
-        NSFileManager.defaultManager().createDirectoryAtURL(kTestsDirectory, withIntermediateDirectories: true, attributes: nil, error: &error)
+        do {
+            try NSFileManager.defaultManager().createDirectoryAtURL(kTestsDirectory, withIntermediateDirectories: true, attributes: nil)
+        } catch let error1 as NSError {
+            error = error1
+        }
         XCTAssertNil(error, "Failed to create tests directory: \(error)")
     }
     
     override func tearDown() {
         var error: NSError?
-        if !NSFileManager.defaultManager().removeItemAtURL(kTestsDirectory, error: &error) {
-            println("Error while removing tests directory: \(error)")
+        do {
+            try NSFileManager.defaultManager().removeItemAtURL(kTestsDirectory)
+        } catch let error1 as NSError {
+            error = error1
+            print("Error while removing tests directory: \(error)")
         }
         
         super.tearDown()
     }
 
-    func waitForExpectationsWithDefaultHandler(timeout: NSTimeInterval = 10, handler: XCWaitCompletionHandler! = { if $0 != nil {println($0)} }) {
+    func waitForExpectationsWithDefaultHandler(timeout: NSTimeInterval = 10, handler: XCWaitCompletionHandler! = { if $0 != nil {print($0)} }) {
         self.waitForExpectationsWithTimeout(timeout, handler: handler)
     }
 
@@ -158,7 +165,7 @@ class TCBlobDownloadManagerTests: XCTestCase {
         
         let downloadHandler = DownloadHandler(expectation: expectation)
         
-        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(bytes: 10), toDirectory: kTestsDirectory, withName: nil, andDelegate: downloadHandler)
+        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(10), toDirectory: kTestsDirectory, withName: nil, andDelegate: downloadHandler)
         
         self.waitForExpectationsWithDefaultHandler()
     }
@@ -166,7 +173,7 @@ class TCBlobDownloadManagerTests: XCTestCase {
     func testDownloadFileAtURLWithClosures_parameters() {
         let expectation = self.expectationWithDescription("should call the closures with the correct parameters")
 
-        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(bytes: 10), toDirectory: kTestsDirectory, withName: nil, progression: { (progress, totalBytesWritten, totalBytesExpectedToWrite) -> Void in
+        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(10), toDirectory: kTestsDirectory, withName: nil, progression: { (progress, totalBytesWritten, totalBytesExpectedToWrite) -> Void in
             XCTAssert(10 == totalBytesWritten)
             XCTAssert(10 == totalBytesExpectedToWrite)
             XCTAssert(1.0 == progress)
@@ -196,7 +203,7 @@ class TCBlobDownloadManagerTests: XCTestCase {
 
         let downloadHandler = DownloadHandler(expectation: expectation)
 
-        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(bytes: 10), toDirectory: kTestsDirectory, withName: nil, andDelegate: downloadHandler)
+        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(10), toDirectory: kTestsDirectory, withName: nil, andDelegate: downloadHandler)
 
         self.waitForExpectationsWithDefaultHandler()
     }
@@ -204,7 +211,7 @@ class TCBlobDownloadManagerTests: XCTestCase {
     func testDownloadFileAtURLWithClosures_on_main_thread() {
         let expectation = self.expectationWithDescription("should call the closures on the main thread")
 
-        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(bytes: 10), toDirectory: kTestsDirectory, withName: nil, progression: { (progress, totalBytesWritten, totalBytesExpectedToWrite) -> Void in
+        TCBlobDownloadManager.sharedInstance.downloadFileAtURL(Httpbin.fixtureWithBytes(10), toDirectory: kTestsDirectory, withName: nil, progression: { (progress, totalBytesWritten, totalBytesExpectedToWrite) -> Void in
             XCTAssert(NSThread.isMainThread(), "progression closure not called on main thread")
         }) { (error, location) -> Void in
             XCTAssert(NSThread.isMainThread(), "completion closure not called on main thread")
@@ -224,11 +231,11 @@ class TCBlobDownloadManagerTests: XCTestCase {
             func download(download: TCBlobDownload, didProgress progress: Float, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {}
             func download(download: TCBlobDownload, didFinishWithError error: NSError?, atLocation location: NSURL?) {
                 XCTAssertNotNil(error, "No error returned for an erroneous HTTP status code")
-                XCTAssertNotNil(error?.userInfo?[kTCBlobDownloadErrorDescriptionKey], "Error userInfo is missing localized description")
-                XCTAssert(error?.userInfo?[kTCBlobDownloadErrorHTTPStatusKey] as? NSValue == 404, "Error userInfo is missing status")
+                XCTAssertNotNil(error?.userInfo[kTCBlobDownloadErrorDescriptionKey], "Error userInfo is missing localized description")
+                XCTAssert(error?.userInfo[kTCBlobDownloadErrorHTTPStatusKey] as? NSValue == 404, "Error userInfo is missing status")
                 
-                if let requestURL = error?.userInfo?[kTCBlobDownloadErrorFailingURLKey] as? NSURL {
-                    XCTAssertEqual(Httpbin.status(404).absoluteString!, requestURL.absoluteString!, "Error userInfo has wrong TCBlobDownloadErrorFailingURLKey value")
+                if let requestURL = error?.userInfo[kTCBlobDownloadErrorFailingURLKey] as? NSURL {
+                    XCTAssertEqual(Httpbin.status(404).absoluteString, requestURL.absoluteString, "Error userInfo has wrong TCBlobDownloadErrorFailingURLKey value")
                 } else {
                     XCTFail("Error userInfo TCBlobDownloadErrorFailingURLKey is not an NSURL")
                 }
