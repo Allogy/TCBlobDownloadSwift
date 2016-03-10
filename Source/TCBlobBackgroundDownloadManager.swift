@@ -6,8 +6,6 @@
 //  Copyright (c) 2015 Allogy Interactive. All rights reserved.
 //
 
-import UIKit
-
 public class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
 
     public static let sharedBackground = TCBlobBackgroundDownloadManager()
