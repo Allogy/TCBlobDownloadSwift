@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3FDF8CF91BD56AD3001A2D90 /* TCBlobBackgroundDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FDF8CF81BD56AD3001A2D90 /* TCBlobBackgroundDownloadManager.swift */; settings = {ASSET_TAGS = (); }; };
 		C311364A1A53919400AD2447 /* TCBlobDownload.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31136491A53919400AD2447 /* TCBlobDownload.swift */; };
 		C35E77951A535BA5006C4229 /* TCBlobDownloadSwiftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B08D351A5339C800341164 /* TCBlobDownloadSwiftTests.swift */; };
 		C3B08D1E1A53398A00341164 /* TCBlobDownloadSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C3B08D121A53398A00341164 /* TCBlobDownloadSwift.framework */; };
@@ -25,6 +26,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3FDF8CF81BD56AD3001A2D90 /* TCBlobBackgroundDownloadManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TCBlobBackgroundDownloadManager.swift; sourceTree = "<group>"; };
 		C31136491A53919400AD2447 /* TCBlobDownload.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TCBlobDownload.swift; sourceTree = "<group>"; };
 		C3B08D121A53398A00341164 /* TCBlobDownloadSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TCBlobDownloadSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3B08D1D1A53398A00341164 /* TCBlobDownloadSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TCBlobDownloadSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -94,6 +96,7 @@
 				C3B08D301A5339BE00341164 /* TCBlobDownloadSwift.h */,
 				C31136491A53919400AD2447 /* TCBlobDownload.swift */,
 				C3B08D381A533A1700341164 /* TCBlobDownloadManager.swift */,
+				3FDF8CF81BD56AD3001A2D90 /* TCBlobBackgroundDownloadManager.swift */,
 				C316A30E1A533F3900C7D112 /* Supporting Files */,
 			);
 			path = Source;
@@ -164,7 +167,9 @@
 		C3B08D091A53398A00341164 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0610;
+				LastSwiftMigration = 0700;
+				LastSwiftUpdateCheck = 0700;
+				LastUpgradeCheck = 0700;
 				ORGANIZATIONNAME = thibaultcha;
 				TargetAttributes = {
 					C3B08D111A53398A00341164 = {
@@ -216,6 +221,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C3B08D391A533A1700341164 /* TCBlobDownloadManager.swift in Sources */,
+				3FDF8CF91BD56AD3001A2D90 /* TCBlobBackgroundDownloadManager.swift in Sources */,
 				C311364A1A53919400AD2447 /* TCBlobDownload.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -260,6 +266,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -331,10 +338,12 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = Source/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thibaultcha.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
@@ -347,10 +356,12 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = Source/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thibaultcha.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
@@ -359,16 +370,14 @@
 		C3B08D2C1A53398A00341164 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(SDKROOT)/Developer/Library/Frameworks",
-					"$(inherited)",
-				);
+				FRAMEWORK_SEARCH_PATHS = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Tests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thibaultcha.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -376,12 +385,10 @@
 		C3B08D2D1A53398A00341164 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(SDKROOT)/Developer/Library/Frameworks",
-					"$(inherited)",
-				);
+				FRAMEWORK_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Tests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.thibaultcha.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

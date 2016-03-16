@@ -6,6 +6,8 @@
 //  Copyright (c) 2014 thibaultcha. All rights reserved.
 //
 
+let kTCBlobDownloadQueueKey = "com.tcblobdownloadswift.queue"
+
 import Foundation
 
 public typealias progressionHandler = ((progress: Float, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) -> Void)!
@@ -16,19 +18,19 @@ public class TCBlobDownload {
     public let downloadTask: NSURLSessionDownloadTask
 
     /// An optional delegate to get notified of events.
-    weak var delegate: TCBlobDownloadDelegate?
+    public weak var delegate: TCBlobDownloadDelegate?
 
     /// An optional progression closure periodically executed when a chunk of data has been received.
-    var progression: progressionHandler
+    public var progression: progressionHandler
 
     /// An optional completion closure executed when a download was completed by the download task.
-    var completion: completionHandler
+    public var completion: completionHandler
 
     /// An optional file name set by the user.
     private let preferedFileName: String?
 
     /// An optional destination path for the file. If nil, the file will be downloaded in the current user temporary directory.
-    private let directory: NSURL?
+    public let directory: NSURL?
 
     /// Will contain an error if the downloaded file couldn't be moved to its final destination.
     var error: NSError?
@@ -48,29 +50,31 @@ public class TCBlobDownload {
     public var destinationURL: NSURL {
         let destinationPath = self.directory ?? NSURL(fileURLWithPath: NSTemporaryDirectory())
 
-        return NSURL(string: self.fileName!, relativeToURL: destinationPath!)!.URLByStandardizingPath!
+        return NSURL(string: self.fileName!, relativeToURL: destinationPath)!.URLByStandardizingPath!
     }
 
+    private let sessionConfigurationIdentifier: String
     /**
         Initialize a new download assuming the `NSURLSessionDownloadTask` was already created.
     
-        :param: downloadTask The underlying download task for this download.
-        :param: directory The directory where to move the downloaded file once completed.
-        :param: fileName The preferred file name once the download is completed.
-        :param: delegate An optional delegate for this download.
+        - parameter downloadTask: The underlying download task for this download.
+        - parameter directory: The directory where to move the downloaded file once completed.
+        - parameter fileName: The preferred file name once the download is completed.
+        - parameter delegate: An optional delegate for this download.
     */
-    init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, delegate: TCBlobDownloadDelegate?) {
+    init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, delegate: TCBlobDownloadDelegate?, sessionConfigurationIdentifier: String) {
         self.downloadTask = downloadTask
         self.directory = directory
         self.preferedFileName = fileName
         self.delegate = delegate
+        self.sessionConfigurationIdentifier = sessionConfigurationIdentifier
     }
 
     /**
         
     */
-    convenience init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, progression: progressionHandler?, completion: completionHandler?) {
-        self.init(downloadTask: downloadTask, toDirectory: directory, fileName: fileName, delegate: nil)
+    convenience init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, sessionConfigurationIdentifier: String, progression: progressionHandler?, completion: completionHandler?) {
+        self.init(downloadTask: downloadTask, toDirectory: directory, fileName: fileName, delegate: nil, sessionConfigurationIdentifier: sessionConfigurationIdentifier)
         self.progression = progression
         self.completion = completion
     }
@@ -109,9 +113,9 @@ public class TCBlobDownload {
         :see: `TCBlobDownloadManager -downloadFileWithResumeData`
         :see: `NSURLSessionDownloadTask -cancelByProducingResumeData`
 
-        :param: completionHandler A completion handler that is called when the download has been successfully canceled. If the download is resumable, the completion handler is provided with a resumeData object.
+        - parameter completionHandler: A completion handler that is called when the download has been successfully canceled. If the download is resumable, the completion handler is provided with a resumeData object.
     */
-    public func cancelWithResumeData(completionHandler: (NSData!) -> Void) {
+    public func cancelWithResumeData(completionHandler: (NSData?) -> Void) {
         self.downloadTask.cancelByProducingResumeData(completionHandler)
     }
 
@@ -125,10 +129,10 @@ public protocol TCBlobDownloadDelegate: class {
     
         :see: `NSURLSession -URLSession:dataTask:didReceiveData:`
     
-        :param: download The download that received a chunk of data.
-        :param: progress The current progress of the download, between 0 and 1. 0 means nothing was received and 1 means the download is completed.
-        :param: totalBytesWritten The total number of bytes the download has currently written to the disk.
-        :param: totalBytesExpectedToWrite The total number of bytes the download will write to the disk once completed.
+        - parameter download: The download that received a chunk of data.
+        - parameter progress: The current progress of the download, between 0 and 1. 0 means nothing was received and 1 means the download is completed.
+        - parameter totalBytesWritten: The total number of bytes the download has currently written to the disk.
+        - parameter totalBytesExpectedToWrite: The total number of bytes the download will write to the disk once completed.
     */
     func download(download: TCBlobDownload, didProgress progress: Float, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64)
 
@@ -137,16 +141,16 @@ public protocol TCBlobDownloadDelegate: class {
     
         :see: `NSURLSession -URLSession:task:didCompleteWithError:`
     
-        :param: download The download that received a chunk of data.
-        :param: error An eventual error. If `nil`, consider the download as being successful.
-        :param: location The location where the downloaded file can be found.
+        - parameter download: The download that received a chunk of data.
+        - parameter error: An eventual error. If `nil`, consider the download as being successful.
+        - parameter location: The location where the downloaded file can be found.
     */
     func download(download: TCBlobDownload, didFinishWithError error: NSError?, atLocation location: NSURL?)
 }
 
 // MARK: Printable
 
-extension TCBlobDownload: Printable {
+extension TCBlobDownload: CustomStringConvertible {
     public var description: String {
         var parts: [String] = []
         var state: String
@@ -159,11 +163,119 @@ extension TCBlobDownload: Printable {
         }
         
         parts.append("TCBlobDownload")
-        parts.append("URL: \(self.downloadTask.originalRequest.URL)")
+        parts.append("URL: \(self.downloadTask.originalRequest!.URL)")
         parts.append("Download task state: \(state)")
         parts.append("destinationPath: \(self.directory)")
         parts.append("fileName: \(self.fileName)")
         
-        return join(" | ", parts)
+        return parts.joinWithSeparator(" | ")
+    }
+}
+
+class TCBlobDownloadArchivable: NSObject, NSCoding {
+    let taskIdentifier: String!
+    let sessionConfigurationIdentifier: String!
+    let fileName: String!
+    let directory: String!
+    var resumeData: NSData?
+
+    init(taskIdentifier: String, sessionConfigurationIdentifier: String, fileName: String?, directory: String?) {
+        self.taskIdentifier = taskIdentifier
+        self.sessionConfigurationIdentifier = sessionConfigurationIdentifier
+        self.fileName = fileName
+        self.directory = directory
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        self.taskIdentifier = aDecoder.decodeObjectForKey("taskIdentifier") as? String
+        self.sessionConfigurationIdentifier = aDecoder.decodeObjectForKey("sessionConfigurationIdentifier") as? String
+        self.fileName = aDecoder.decodeObjectForKey("fileName") as? String
+        self.directory = aDecoder.decodeObjectForKey("directory") as? String
+        self.resumeData = aDecoder.decodeObjectForKey("resumeData") as? NSData
+        super.init()
+    }
+
+    func encodeWithCoder(aCoder: NSCoder) {
+        aCoder.encodeObject(self.taskIdentifier, forKey: "taskIdentifier")
+        aCoder.encodeObject(self.sessionConfigurationIdentifier, forKey: "sessionConfigurationIdentifier")
+        aCoder.encodeObject(self.fileName, forKey: "fileName")
+        aCoder.encodeObject(self.directory, forKey: "directory")
+        aCoder.encodeObject(self.resumeData, forKey: "resumeData")
+    }
+
+    func taskQueue() -> [String: TCBlobDownloadArchivable]? {
+        let data = NSUserDefaults.standardUserDefaults().dataForKey(self.sessionConfigurationIdentifier)
+
+        if let d = data {
+            return NSKeyedUnarchiver.unarchiveObjectWithData(d)  as? [String : TCBlobDownloadArchivable]
+        }
+        return nil
+    }
+
+    func save() {
+        var downloads: [String: TCBlobDownloadArchivable] = [:]
+        if let d = self.taskQueue() {
+            downloads = d
+        }
+
+        downloads[taskIdentifier] = self
+
+        let archive = NSKeyedArchiver.archivedDataWithRootObject(downloads)
+        NSUserDefaults.standardUserDefaults().setObject(archive, forKey: self.sessionConfigurationIdentifier)
+        NSUserDefaults.standardUserDefaults().synchronize()
+    }
+
+    func delete() {
+        TCBlobDownloadArchivable.deleteForTaskIdentifier(taskIdentifier, sessionConfigurationIdentifier: sessionConfigurationIdentifier)
+    }
+
+    class func deleteForTaskIdentifier(taskIdentifier: String, sessionConfigurationIdentifier: String) {
+        if var d = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(sessionConfigurationIdentifier) {
+            d.removeValueForKey(taskIdentifier)
+
+            let archive = NSKeyedArchiver.archivedDataWithRootObject(d)
+            NSUserDefaults.standardUserDefaults().setObject(archive, forKey: sessionConfigurationIdentifier)
+            NSUserDefaults.standardUserDefaults().synchronize()
+        }
+    }
+
+    func downloadForTask(downloadTask: NSURLSessionDownloadTask) -> TCBlobDownload {
+        return TCBlobDownload(downloadTask: downloadTask, toDirectory: self.directory != nil ? NSURL(fileURLWithPath: self.directory!, isDirectory: true) : nil, fileName: self.fileName, delegate: nil, sessionConfigurationIdentifier: self.sessionConfigurationIdentifier)
+    }
+
+    override var description: String {
+        var parts: [String] = []
+
+        parts.append("TCBlobDownloadArchivable")
+        if let f = self.fileName {
+            parts.append("fileName: \(f)")
+        }
+        if let d = self.directory {
+            parts.append("destinationPath: \(d)")
+        }
+        parts.append("Has resumeData: \(self.resumeData != nil ? true : false)")
+
+        return parts.joinWithSeparator(" | ")
+    }
+}
+
+extension TCBlobDownload {
+    
+    func save() {
+        let archivable = TCBlobDownloadArchivable(taskIdentifier: String(self.downloadTask.taskIdentifier), sessionConfigurationIdentifier: self.sessionConfigurationIdentifier, fileName: self.fileName, directory: self.directory != nil ? self.directory!.path : nil)
+        archivable.save()
+    }
+
+    func delete() {
+        TCBlobDownloadArchivable.deleteForTaskIdentifier(String(self.downloadTask.taskIdentifier), sessionConfigurationIdentifier: self.sessionConfigurationIdentifier)
+    }
+
+    func archive() -> TCBlobDownloadArchivable? {
+        if var tasks = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(self.sessionConfigurationIdentifier) {
+            if let task = tasks[String(self.downloadTask.taskIdentifier)] {
+                return task
+            }
+        }
+        return nil
     }
 }
