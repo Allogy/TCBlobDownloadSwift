@@ -86,7 +86,7 @@ public class TCBlobDownloadManager {
     */
     public func downloadFileAtURL(url: NSURL, toDirectory directory: NSURL?, withName name: String?, andDelegate delegate: TCBlobDownloadDelegate?) -> TCBlobDownload {
         let downloadTask = self.session.downloadTaskWithURL(url)
-        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, delegate: delegate)
+        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, delegate: delegate, sessionConfigurationIdentifier: self.session.configuration.identifier!)
 
         return self.downloadWithDownload(download)
     }
@@ -104,7 +104,7 @@ public class TCBlobDownloadManager {
     */
     public func downloadFileAtURL(url: NSURL, toDirectory directory: NSURL?, withName name: String?, progression: progressionHandler?, completion: completionHandler?) -> TCBlobDownload {
         let downloadTask = self.session.downloadTaskWithURL(url)
-        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, progression: progression, completion: completion)
+        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, sessionConfigurationIdentifier: self.session.configuration.identifier!, progression: progression, completion: completion)
 
         return self.downloadWithDownload(download)
     }
@@ -123,7 +123,7 @@ public class TCBlobDownloadManager {
     */
     public func downloadFileWithResumeData(resumeData: NSData, toDirectory directory: NSURL?, withName name: String?, andDelegate delegate: TCBlobDownloadDelegate?) -> TCBlobDownload {
         let downloadTask = self.session.downloadTaskWithResumeData(resumeData)
-        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, delegate: delegate)
+        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, delegate: delegate, sessionConfigurationIdentifier: self.session.configuration.identifier!)
 
         return self.downloadWithDownload(download)
     }
@@ -149,6 +149,18 @@ public class TCBlobDownloadManager {
     }
 }
 
+extension TCBlobDownloadManager {
+    
+    class func taskQueueForSessionConfigurationIdentifier(configurationIdentifier: String) -> [String: TCBlobDownloadArchivable]? {
+        let data = NSUserDefaults.standardUserDefaults().dataForKey(configurationIdentifier)
+
+        if let d = data {
+            return NSKeyedUnarchiver.unarchiveObjectWithData(d)  as? [String : TCBlobDownloadArchivable]
+        }
+        return nil
+    }
+}
+
 public class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
 
     public var backgroundTransferCompletionHandler: (() -> Void)? = {}
@@ -162,9 +174,33 @@ public class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
     }
 
     func restoreDownloadsForSession(session: NSURLSession) {
-        TCBlobDownloadArchivable.downloadsForURLSession(session, completion: { [unowned self] (downloads) -> Void in
+        self.downloadsForURLSession(session, completion: { [unowned self] (downloads) -> Void in
             self.downloads = downloads
         })
+    }
+
+    func existingArchivableDownloadForTask(task: NSURLSessionDownloadTask, session: NSURLSession) -> TCBlobDownloadArchivable? {
+        if let downloads = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(session.configuration.identifier!) {
+            return downloads[String(task.taskIdentifier)]
+        }
+        return nil
+    }
+
+    func downloadsForURLSession(session: NSURLSession, completion: ([Int : TCBlobDownload]) -> Void) {
+
+        var downloads: [Int : TCBlobDownload] = [:]
+
+        session.getTasksWithCompletionHandler { (data, uploadTasks, downloadTasks) -> Void in
+
+            for t in downloadTasks {
+                let task = t
+                let download = self.existingArchivableDownloadForTask(task, session: session)
+                if let d = download {
+                    downloads[task.taskIdentifier] = d.downloadForTask(task)
+                }
+            }
+            completion(downloads)
+        }
     }
     // MARK: NSURLSessionDownloadDelegate
 

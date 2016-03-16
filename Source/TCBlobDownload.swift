@@ -53,6 +53,7 @@ public class TCBlobDownload {
         return NSURL(string: self.fileName!, relativeToURL: destinationPath)!.URLByStandardizingPath!
     }
 
+    private let sessionConfigurationIdentifier: String
     /**
         Initialize a new download assuming the `NSURLSessionDownloadTask` was already created.
     
@@ -61,18 +62,19 @@ public class TCBlobDownload {
         - parameter fileName: The preferred file name once the download is completed.
         - parameter delegate: An optional delegate for this download.
     */
-    init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, delegate: TCBlobDownloadDelegate?) {
+    init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, delegate: TCBlobDownloadDelegate?, sessionConfigurationIdentifier: String) {
         self.downloadTask = downloadTask
         self.directory = directory
         self.preferedFileName = fileName
         self.delegate = delegate
+        self.sessionConfigurationIdentifier = sessionConfigurationIdentifier
     }
 
     /**
         
     */
-    convenience init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, progression: progressionHandler?, completion: completionHandler?) {
-        self.init(downloadTask: downloadTask, toDirectory: directory, fileName: fileName, delegate: nil)
+    convenience init(downloadTask: NSURLSessionDownloadTask, toDirectory directory: NSURL?, fileName: String?, sessionConfigurationIdentifier: String, progression: progressionHandler?, completion: completionHandler?) {
+        self.init(downloadTask: downloadTask, toDirectory: directory, fileName: fileName, delegate: nil, sessionConfigurationIdentifier: sessionConfigurationIdentifier)
         self.progression = progression
         self.completion = completion
     }
@@ -171,16 +173,22 @@ extension TCBlobDownload: CustomStringConvertible {
 }
 
 class TCBlobDownloadArchivable: NSObject, NSCoding {
-    let fileName: String?
-    let directory: String?
+    let taskIdentifier: String!
+    let sessionConfigurationIdentifier: String!
+    let fileName: String!
+    let directory: String!
     var resumeData: NSData?
 
-    init(taskIdentifier: String, fileName: String?, directory: String?) {
+    init(taskIdentifier: String, sessionConfigurationIdentifier: String, fileName: String?, directory: String?) {
+        self.taskIdentifier = taskIdentifier
+        self.sessionConfigurationIdentifier = sessionConfigurationIdentifier
         self.fileName = fileName
         self.directory = directory
     }
 
     required init?(coder aDecoder: NSCoder) {
+        self.taskIdentifier = aDecoder.decodeObjectForKey("taskIdentifier") as? String
+        self.sessionConfigurationIdentifier = aDecoder.decodeObjectForKey("sessionConfigurationIdentifier") as? String
         self.fileName = aDecoder.decodeObjectForKey("fileName") as? String
         self.directory = aDecoder.decodeObjectForKey("directory") as? String
         self.resumeData = aDecoder.decodeObjectForKey("resumeData") as? NSData
@@ -188,13 +196,15 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
     }
 
     func encodeWithCoder(aCoder: NSCoder) {
+        aCoder.encodeObject(self.taskIdentifier, forKey: "taskIdentifier")
+        aCoder.encodeObject(self.sessionConfigurationIdentifier, forKey: "sessionConfigurationIdentifier")
         aCoder.encodeObject(self.fileName, forKey: "fileName")
         aCoder.encodeObject(self.directory, forKey: "directory")
         aCoder.encodeObject(self.resumeData, forKey: "resumeData")
     }
 
-    class func taskQueue() -> [String: TCBlobDownloadArchivable]? {
-        let data = NSUserDefaults.standardUserDefaults().dataForKey(kTCBlobDownloadQueueKey)
+    func taskQueue() -> [String: TCBlobDownloadArchivable]? {
+        let data = NSUserDefaults.standardUserDefaults().dataForKey(self.sessionConfigurationIdentifier)
 
         if let d = data {
             return NSKeyedUnarchiver.unarchiveObjectWithData(d)  as? [String : TCBlobDownloadArchivable]
@@ -202,55 +212,35 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
         return nil
     }
 
-    func saveForTaskIdentifier(taskIdentifier: String) {
+    func save() {
         var downloads: [String: TCBlobDownloadArchivable] = [:]
-        if let d = TCBlobDownloadArchivable.taskQueue() {
+        if let d = self.taskQueue() {
             downloads = d
         }
 
         downloads[taskIdentifier] = self
 
         let archive = NSKeyedArchiver.archivedDataWithRootObject(downloads)
-        NSUserDefaults.standardUserDefaults().setObject(archive, forKey: kTCBlobDownloadQueueKey)
+        NSUserDefaults.standardUserDefaults().setObject(archive, forKey: self.sessionConfigurationIdentifier)
         NSUserDefaults.standardUserDefaults().synchronize()
     }
 
-    class func deleteForTaskIdentifier(taskIdentifier: String) {
-        if var d = TCBlobDownloadArchivable.taskQueue() {
+    func delete() {
+        TCBlobDownloadArchivable.deleteForTaskIdentifier(taskIdentifier, sessionConfigurationIdentifier: sessionConfigurationIdentifier)
+    }
+
+    class func deleteForTaskIdentifier(taskIdentifier: String, sessionConfigurationIdentifier: String) {
+        if var d = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(sessionConfigurationIdentifier) {
             d.removeValueForKey(taskIdentifier)
 
             let archive = NSKeyedArchiver.archivedDataWithRootObject(d)
-            NSUserDefaults.standardUserDefaults().setObject(archive, forKey: kTCBlobDownloadQueueKey)
+            NSUserDefaults.standardUserDefaults().setObject(archive, forKey: sessionConfigurationIdentifier)
             NSUserDefaults.standardUserDefaults().synchronize()
         }
     }
 
     func downloadForTask(downloadTask: NSURLSessionDownloadTask) -> TCBlobDownload {
-        return TCBlobDownload(downloadTask: downloadTask, toDirectory: self.directory != nil ? NSURL(fileURLWithPath: self.directory!, isDirectory: true) : nil, fileName: self.fileName, delegate: nil)
-    }
-
-    class func existingArchivableDownloadForTask(task: NSURLSessionDownloadTask) -> TCBlobDownloadArchivable? {
-        if let downloads = TCBlobDownloadArchivable.taskQueue() {
-            return downloads[String(task.taskIdentifier)]
-        }
-        return nil
-    }
-
-    class func downloadsForURLSession(session: NSURLSession, completion: ([Int : TCBlobDownload]) -> Void) {
-
-        var downloads: [Int : TCBlobDownload] = [:]
-
-        session.getTasksWithCompletionHandler { (data, uploadTasks, downloadTasks) -> Void in
-            
-            for t in downloadTasks {
-                let task = t 
-                let download = TCBlobDownloadArchivable.existingArchivableDownloadForTask(task)
-                if let d = download {
-                    downloads[task.taskIdentifier] = d.downloadForTask(task)
-                }
-            }
-            completion(downloads)
-        }
+        return TCBlobDownload(downloadTask: downloadTask, toDirectory: self.directory != nil ? NSURL(fileURLWithPath: self.directory!, isDirectory: true) : nil, fileName: self.fileName, delegate: nil, sessionConfigurationIdentifier: self.sessionConfigurationIdentifier)
     }
 
     override var description: String {
@@ -272,16 +262,16 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
 extension TCBlobDownload {
     
     func save() {
-        let archivable = TCBlobDownloadArchivable(taskIdentifier: String(self.downloadTask.taskIdentifier), fileName: self.fileName, directory: self.directory != nil ? self.directory!.path : nil)
-        archivable.saveForTaskIdentifier(String(self.downloadTask.taskIdentifier))
+        let archivable = TCBlobDownloadArchivable(taskIdentifier: String(self.downloadTask.taskIdentifier), sessionConfigurationIdentifier: self.sessionConfigurationIdentifier, fileName: self.fileName, directory: self.directory != nil ? self.directory!.path : nil)
+        archivable.save()
     }
 
     func delete() {
-        TCBlobDownloadArchivable.deleteForTaskIdentifier(String(self.downloadTask.taskIdentifier))
+        TCBlobDownloadArchivable.deleteForTaskIdentifier(String(self.downloadTask.taskIdentifier), sessionConfigurationIdentifier: self.sessionConfigurationIdentifier)
     }
 
     func archive() -> TCBlobDownloadArchivable? {
-        if var tasks = TCBlobDownloadArchivable.taskQueue() {
+        if var tasks = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(self.sessionConfigurationIdentifier) {
             if let task = tasks[String(self.downloadTask.taskIdentifier)] {
                 return task
             }
