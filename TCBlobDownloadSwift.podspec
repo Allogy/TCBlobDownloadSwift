@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "TCBlobDownloadSwift"
-  s.version      = "0.1.0"
+  s.version      = "0.2.0"
   s.summary      = "Powerful file downloads manager in Swift"
   s.homepage     = "https://github.com/thibaultCha/TCBlobDownloadSwift"
   s.license      = { :type => "MIT", :file => "LICENSE" }
@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.osx.deployment_target = "10.9"
 
   s.source       = {
-    :git => "https://github.com/thibaultCha/TCBlobDownloadSwift.git",
+    :git => "https://github.com/bonebox/TCBlobDownloadSwift.git",
     :tag => s.version.to_s
   }
 
