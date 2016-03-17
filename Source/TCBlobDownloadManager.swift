@@ -136,16 +136,7 @@ public class TCBlobDownloadManager {
         :return: An `Array` of all current downloads with the given state.
     */
     public func currentDownloadsFilteredByState(state: NSURLSessionTaskState?) -> [TCBlobDownload] {
-        var downloads = [TCBlobDownload]()
-
-        // TODO: make functional as soon as Dictionary supports reduce/filter.
-        for download in self.delegate.downloads.values {
-            if state == nil || download.downloadTask.state == state {
-                downloads.append(download)
-            }
-        }
-
-        return downloads
+        return self.delegate.downloads.values.filter { state == nil || $0.downloadTask.state == state }
     }
 }
 
@@ -260,7 +251,7 @@ public class DownloadDelegate: NSObject, NSURLSessionDownloadDelegate {
 
             dispatch_async(dispatch_get_main_queue()) {
                 download.delegate?.download(download, didFinishWithError: error, atLocation: download.resultingURL)
-                download.completion?(error: error, location: download.resultingURL)
+                download.completion?(download: download, error: error, location: download.resultingURL)
                 return
             }
         }
