@@ -92,6 +92,23 @@ public class TCBlobDownloadManager {
     }
 
     /**
+     Start downloading the file using the given NSURLRequest.
+
+     - parameter request: NSURLRequest to use for the file download.
+     - parameter directory: Directory Where to copy the file once the download is completed. If `nil`, the file will be downloaded in the current user temporary directory/
+     - parameter name: Name to give to the file once the download is completed.
+     - parameter delegate: An eventual delegate for this download.
+
+     :return: A `TCBlobDownload` instance.
+     */
+    public func downloadFileWithRequest(request: NSURLRequest, toDirectory directory: NSURL?, withName name: String?, andDelegate delegate: TCBlobDownloadDelegate?) -> TCBlobDownload {
+        let downloadTask = self.session.downloadTaskWithRequest(request)
+        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, delegate: delegate, sessionConfigurationIdentifier: self.session.configuration.identifier!)
+
+        return self.downloadWithDownload(download)
+    }
+
+    /**
         Start downloading the file at the given URL.
 
         - parameter url: NSURL of the file to download.
@@ -104,6 +121,24 @@ public class TCBlobDownloadManager {
     */
     public func downloadFileAtURL(url: NSURL, toDirectory directory: NSURL?, withName name: String?, progression: progressionHandler?, completion: completionHandler?) -> TCBlobDownload {
         let downloadTask = self.session.downloadTaskWithURL(url)
+        let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, sessionConfigurationIdentifier: self.session.configuration.identifier!, progression: progression, completion: completion)
+
+        return self.downloadWithDownload(download)
+    }
+
+    /**
+     Start downloading the file using the given NSURLRequest.
+
+     - parameter request: NSURLRequest to use for the file download.
+     - parameter directory: Directory Where to copy the file once the download is completed. If `nil`, the file will be downloaded in the current user temporary directory/
+     - parameter name: Name to give to the file once the download is completed.
+     - parameter progression: A closure executed periodically when a chunk of data is received.
+     - parameter completion: A closure executed when the download has been completed.
+
+     :return: A `TCBlobDownload` instance.
+     */
+    public func downloadFileWithRequest(request: NSURLRequest, toDirectory directory: NSURL?, withName name: String?, progression: progressionHandler?, completion: completionHandler?) -> TCBlobDownload {
+        let downloadTask = self.session.downloadTaskWithRequest(request)
         let download = TCBlobDownload(downloadTask: downloadTask, toDirectory: directory, fileName: name, sessionConfigurationIdentifier: self.session.configuration.identifier!, progression: progression, completion: completion)
 
         return self.downloadWithDownload(download)
