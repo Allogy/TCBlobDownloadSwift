@@ -6,12 +6,12 @@
 //  Copyright (c) 2015 Allogy Interactive. All rights reserved.
 //
 
-public class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
+open class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
 
-    public static let sharedBackground = TCBlobBackgroundDownloadManager()
+    open static let sharedBackground = TCBlobBackgroundDownloadManager()
 
     convenience init() {
-        let config = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier("tcblobdownloadmanager.background.session")
+        let config = URLSessionConfiguration.background(withIdentifier: "tcblobdownloadmanager.background.session")
         self.init(config: config)
     }
 }
