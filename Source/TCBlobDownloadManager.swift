@@ -230,6 +230,20 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     }
     // MARK: NSURLSessionDownloadDelegate
 
+    open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        let download = self.downloads[downloadTask.taskIdentifier]!
+        var fileError: NSError?
+        var resultingURL: NSURL?
+        
+        do {
+            try FileManager.default.replaceItem(at: download.destinationURL as URL, withItemAt: location, backupItemName: nil, options: [], resultingItemURL: &resultingURL)
+            download.resultingURL = resultingURL as? URL
+        } catch let error1 as NSError {
+            fileError = error1
+            download.error = fileError
+        }
+    }
+    
     open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
         print("Resume at offset: \(fileOffset) total expected: \(expectedTotalBytes)")
     }
@@ -247,24 +261,36 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         }
     }
 
-    open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        let download = self.downloads[downloadTask.taskIdentifier]!
-        var fileError: NSError?
-        var resultingURL: NSURL?
+}
 
-        do {
-            try FileManager.default.replaceItem(at: download.destinationURL as URL, withItemAt: location, backupItemName: nil, options: [], resultingItemURL: &resultingURL)
-            download.resultingURL = resultingURL as? URL
-        } catch let error1 as NSError {
-            fileError = error1
-            download.error = fileError
+extension DownloadDelegate : URLSessionDelegate {
+    
+    open func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        session.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) -> Void in
+            
+            if downloadTasks.count == 0 {
+                
+                if let completionHandler = self.backgroundTransferCompletionHandler {
+                    
+                    OperationQueue.main.addOperation({
+                        [unowned self] in
+                        
+                        completionHandler()
+                        self.backgroundTransferCompletionHandler = nil
+                        })
+                }
+            }
         }
     }
 
+}
+
+extension DownloadDelegate : URLSessionTaskDelegate {
+    
     open func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError sessionError: Error?) {
-
+        
         if let download = self.downloads[task.taskIdentifier] {
-
+            
             var error: NSError? = sessionError as NSError?? ?? download.error
             // Handle possible HTTP errors
             if let response = task.response as? HTTPURLResponse {
@@ -273,17 +299,17 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
                 // so let's ignore them as they sometimes appear there for now. (But WTF?)
                 if !validateResponse(response) && (error == nil || error!.domain == NSURLErrorDomain) {
                     error = NSError(domain: kTCBlobDownloadErrorDomain,
-                        code: TCBlobDownloadError.tcBlobDownloadHTTPError.rawValue,
-                        userInfo: [kTCBlobDownloadErrorDescriptionKey: "Erroneous HTTP status code: \(response.statusCode)",
-                                   kTCBlobDownloadErrorFailingURLKey: task.originalRequest!.url!,
-                                   kTCBlobDownloadErrorHTTPStatusKey: response.statusCode])
+                                    code: TCBlobDownloadError.tcBlobDownloadHTTPError.rawValue,
+                                    userInfo: [kTCBlobDownloadErrorDescriptionKey: "Erroneous HTTP status code: \(response.statusCode)",
+                                        kTCBlobDownloadErrorFailingURLKey: task.originalRequest!.url!,
+                                        kTCBlobDownloadErrorHTTPStatusKey: response.statusCode])
                 }
             }
-
+            
             // Remove the reference to the download
             self.downloads.removeValue(forKey: task.taskIdentifier)
             download.delete()
-
+            
             DispatchQueue.main.async {
                 download.delegate?.download(download, didFinishWithError: error, atLocation: download.resultingURL)
                 download.completion?(download, error, download.resultingURL)
@@ -292,21 +318,4 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         }
     }
 
-    open func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-        session.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) -> Void in
-
-            if downloadTasks.count == 0 {
-                
-                if let completionHandler = self.backgroundTransferCompletionHandler {
-
-                    OperationQueue.main.addOperation({
-                        [unowned self] in
-
-                        completionHandler()
-                        self.backgroundTransferCompletionHandler = nil
-                    })
-                }
-            }
-        }
-    }
 }
