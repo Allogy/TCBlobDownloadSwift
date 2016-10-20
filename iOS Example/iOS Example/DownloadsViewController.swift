@@ -26,52 +26,52 @@ class DownloadsViewController: UIViewController, UITableViewDataSource, UITableV
         super.viewDidLoad()
 
         let nib = UINib(nibName: "DownloadTableViewCell", bundle: nil)
-        self.downloadsTableView.registerNib(nib, forCellReuseIdentifier: kDownloadCellidentifier)
+        self.downloadsTableView.register(nib, forCellReuseIdentifier: kDownloadCellidentifier)
     }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
     }
 
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "toAddDownload" {
-            let destinationNC = segue.destinationViewController as! UINavigationController
+            let destinationNC = segue.destination as! UINavigationController
             let destinationVC = destinationNC.topViewController as! AddDownloadViewController
             destinationVC.delegate = self
         }
     }
 
-    private func getDownloadFromButtonPress(sender: UIButton, event: UIEvent) -> (download: TCBlobDownload, indexPath: NSIndexPath) {
-        let touch = event.touchesForView(sender)?.first as! UITouch
-        let location = touch.locationInView(self.downloadsTableView)
-        let indexPath = self.downloadsTableView.indexPathForRowAtPoint(location)
+    fileprivate func getDownloadFromButtonPress(_ sender: UIButton, event: UIEvent) -> (download: TCBlobDownload, indexPath: IndexPath) {
+        let touch = event.touches(for: sender)?.first
+        let location = touch?.location(in: self.downloadsTableView)
+        let indexPath = self.downloadsTableView.indexPathForRow(at: location!)
 
         return (self.downloads[indexPath!.row], indexPath!)
     }
 
     // MARK: Downloads management
 
-    func addDownloadWithURL(url: NSURL?, name: String?) {
+    func addDownloadWithURL(_ url: URL?, name: String?) {
         let download = self.manager.downloadFileAtURL(url!, toDirectory: nil, withName: name, andDelegate: self)
         self.downloads.append(download)
 
-        let insertIndexPath = NSIndexPath(forRow: self.downloads.count - 1, inSection: 0)
-        self.downloadsTableView.insertRowsAtIndexPaths([insertIndexPath], withRowAnimation: UITableViewRowAnimation.Automatic)
+        let insertIndexPath = IndexPath(row: self.downloads.count - 1, section: 0)
+        self.downloadsTableView.insertRows(at: [insertIndexPath], with: .automatic)
     }
 
-    func didPressPauseButton(sender: UIButton!, event: UIEvent) {
+    func didPressPauseButton(_ sender: UIButton!, event: UIEvent) {
         let e = self.getDownloadFromButtonPress(sender, event: event)
 
-        if e.download.downloadTask.state == NSURLSessionTaskState.Running {
+        if e.download.downloadTask.state == URLSessionTask.State.running {
            e.download.suspend()
         } else {
             e.download.resume()
         }
 
-        self.downloadsTableView.reloadRowsAtIndexPaths([e.indexPath], withRowAnimation: UITableViewRowAnimation.None)
+        self.downloadsTableView.reloadRows(at: [e.indexPath as IndexPath], with: UITableViewRowAnimation.none)
     }
 
-    func didPressCancelButton(sender: UIButton!, event: UIEvent) {
+    func didPressCancelButton(_ sender: UIButton!, event: UIEvent) {
         let e = self.getDownloadFromButtonPress(sender, event: event)
 
         e.download.cancel()
@@ -79,13 +79,13 @@ class DownloadsViewController: UIViewController, UITableViewDataSource, UITableV
 
     // MARK: UITableViewDataSource
 
-    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return self.downloads.count
     }
 
-    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCellWithIdentifier(kDownloadCellidentifier) as! DownloadTableViewCell
-        var download: TCBlobDownload = self.downloads[indexPath.row]
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: kDownloadCellidentifier) as! DownloadTableViewCell
+        let download: TCBlobDownload = self.downloads[indexPath.row]
 
         if let fileName = download.fileName {
             cell.labelFileName.text = fileName
@@ -93,44 +93,45 @@ class DownloadsViewController: UIViewController, UITableViewDataSource, UITableV
             cell.labelFileName.text = "..."
         }
 
-        if download.downloadTask.state == NSURLSessionTaskState.Running {
-            cell.buttonPause.setTitle("Pause", forState: UIControlState.Normal)
-        } else if download.downloadTask.state == NSURLSessionTaskState.Suspended {
-            cell.buttonPause.setTitle("Resume", forState: UIControlState.Normal)
+        if download.downloadTask.state == URLSessionTask.State.running {
+            cell.buttonPause.setTitle("Pause", for: UIControlState())
+        } else if download.downloadTask.state == URLSessionTask.State.suspended {
+            cell.buttonPause.setTitle("Resume", for: UIControlState())
         }
 
         cell.progress = download.progress
-        cell.labelDownload.text = download.downloadTask.originalRequest.URL?.absoluteString
-        cell.buttonPause.addTarget(self, action: "didPressPauseButton:event:", forControlEvents: UIControlEvents.TouchUpInside)
-        cell.buttonCancel.addTarget(self, action: "didPressCancelButton:event:", forControlEvents: UIControlEvents.TouchUpInside)
+        cell.labelDownload.text = download.downloadTask.originalRequest?.url?.absoluteString
+        cell.buttonPause.addTarget(self, action: #selector(DownloadsViewController.didPressPauseButton(_:event:)), for: UIControlEvents.touchUpInside)
+        cell.buttonCancel.addTarget(self, action: #selector(DownloadsViewController.didPressCancelButton(_:event:)), for: UIControlEvents.touchUpInside)
 
         return cell
     }
 
     // MARK: UITableViewDelegate
 
-    func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 70
     }
 
     // MARK: TCBlobDownloadDelegate
 
-    func download(download: TCBlobDownload, didProgress progress: Float, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        let downloads: NSArray = self.downloads
-        let index = downloads.indexOfObject(download)
-        let updateIndexPath = NSIndexPath(forRow: index, inSection: 0)
+    func download(_ download: TCBlobDownload, didProgress progress: Float, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        let downloads: NSArray = self.downloads as NSArray
+        let index = downloads.index(of: download)
+        let updateIndexPath = IndexPath(row: index, section: 0)
 
-        let cell = self.downloadsTableView.cellForRowAtIndexPath(updateIndexPath) as! DownloadTableViewCell
+        let cell = self.downloadsTableView.cellForRow(at: updateIndexPath) as! DownloadTableViewCell
         cell.progress = progress
     }
 
-    func download(download: TCBlobDownload, didFinishWithError: NSError?, atLocation location: NSURL?) {
-        let downloads: NSArray = self.downloads
-        let index = downloads.indexOfObject(download)
-        self.downloads.removeAtIndex(index)
+    func download(_ download: TCBlobDownload, didFinishWithError: NSError?, atLocation location: URL?) {
+        let downloads: NSArray = self.downloads as NSArray
+        let index = downloads.index(of: download)
+        self.downloads.remove(at: index)
 
-        let deleteIndexPath = NSIndexPath(forRow: index, inSection: 0)
-        self.downloadsTableView.deleteRowsAtIndexPaths([deleteIndexPath], withRowAnimation: UITableViewRowAnimation.Automatic)
+        
+        let deleteIndexPath = IndexPath(row: index, section: 0)
+        self.downloadsTableView.deleteRows(at: [deleteIndexPath], with: .automatic)
     }
 
 }
