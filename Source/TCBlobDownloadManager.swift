@@ -230,11 +230,12 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     }
     // MARK: NSURLSessionDownloadDelegate
 
-    open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
+    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
+
         print("Resume at offset: \(fileOffset) total expected: \(expectedTotalBytes)")
     }
 
-    open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         let download = self.downloads[downloadTask.taskIdentifier]!
 
         let progress = totalBytesExpectedToWrite == NSURLSessionTransferSizeUnknown ? -1 : Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
@@ -247,7 +248,7 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         }
     }
 
-    open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         let download = self.downloads[downloadTask.taskIdentifier]!
         var fileError: NSError?
         var resultingURL: NSURL?
@@ -261,7 +262,7 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         }
     }
 
-    open func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError sessionError: Error?) {
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError sessionError: Error?) {
 
         if let download = self.downloads[task.taskIdentifier] {
 
@@ -292,7 +293,9 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         }
     }
 
-    open func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+    
+    public func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+
         session.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) -> Void in
 
             if downloadTasks.count == 0 {
