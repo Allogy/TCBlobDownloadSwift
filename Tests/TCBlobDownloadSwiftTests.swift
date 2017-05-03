@@ -35,7 +35,7 @@ class TCBlobDownloadManagerTests: XCTestCase {
         } catch let error1 as NSError {
             error = error1
         }
-        XCTAssertNil(error, "Failed to create tests directory: \(error)")
+        XCTAssertNil(error, "Failed to create tests directory: \(String(describing: error))")
     }
     
     override func tearDown() {
@@ -44,13 +44,13 @@ class TCBlobDownloadManagerTests: XCTestCase {
             try FileManager.default.removeItem(at: kTestsDirectory)
         } catch let error1 as NSError {
             error = error1
-            print("Error while removing tests directory: \(error)")
+            print("Error while removing tests directory: \(String(describing: error))")
         }
         
         super.tearDown()
     }
 
-    func waitForExpectationsWithDefaultHandler(_ timeout: TimeInterval = 10, handler: XCWaitCompletionHandler! = { if $0 != nil {print($0)} }) {
+    func waitForExpectationsWithDefaultHandler(_ timeout: TimeInterval = 10, handler: XCWaitCompletionHandler! = { if $0 != nil {  print($0 as Any) } }) {
         self.waitForExpectations(timeout: timeout, handler: handler)
     }
 

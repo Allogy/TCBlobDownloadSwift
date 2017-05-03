@@ -164,10 +164,10 @@ extension TCBlobDownload: CustomStringConvertible {
         }
         
         parts.append("TCBlobDownload")
-        parts.append("URL: \(self.downloadTask.originalRequest!.url)")
+        parts.append("URL: \(String(describing: self.downloadTask.originalRequest!.url))")
         parts.append("Download task state: \(state)")
-        parts.append("destinationPath: \(self.directory)")
-        parts.append("fileName: \(self.fileName)")
+        parts.append("destinationPath: \(String(describing: self.directory))")
+        parts.append("fileName: \(String(describing: self.fileName))")
         
         return parts.joined(separator: " | ")
     }
