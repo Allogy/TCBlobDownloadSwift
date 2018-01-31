@@ -231,7 +231,8 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     // MARK: NSURLSessionDownloadDelegate
 
     open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        let download = self.downloads[downloadTask.taskIdentifier]!
+        guard let download = self.downloads[downloadTask.taskIdentifier] else { return }
+        
         var fileError: NSError?
         var resultingURL: NSURL?
         
@@ -249,7 +250,7 @@ open class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     }
 
     open func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        let download = self.downloads[downloadTask.taskIdentifier]!
+        guard let download = self.downloads[downloadTask.taskIdentifier] else { return }
 
         let progress = totalBytesExpectedToWrite == NSURLSessionTransferSizeUnknown ? -1 : Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
         download.progress = progress
@@ -289,32 +290,31 @@ extension DownloadDelegate : URLSessionTaskDelegate {
     
     open func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError sessionError: Error?) {
         
-        if let download = self.downloads[task.taskIdentifier] {
+        guard let download = self.downloads[task.taskIdentifier] else { return }
             
-            var error: NSError? = sessionError as NSError? ?? download.error
-            // Handle possible HTTP errors
-            if let response = task.response as? HTTPURLResponse {
-                // NSURLErrorDomain errors are not supposed to be reported by this delegate
-                // according to https://developer.apple.com/library/ios/documentation/Cocoa/Conceptual/URLLoadingSystem/NSURLSessionConcepts/NSURLSessionConcepts.html
-                // so let's ignore them as they sometimes appear there for now. (But WTF?)
-                if !validateResponse(response) && (error == nil || error!.domain == NSURLErrorDomain) {
-                    error = NSError(domain: kTCBlobDownloadErrorDomain,
-                                    code: TCBlobDownloadError.tcBlobDownloadHTTPError.rawValue,
-                                    userInfo: [kTCBlobDownloadErrorDescriptionKey: "Erroneous HTTP status code: \(response.statusCode)",
-                                        kTCBlobDownloadErrorFailingURLKey: task.originalRequest!.url!,
-                                        kTCBlobDownloadErrorHTTPStatusKey: response.statusCode])
-                }
+        var error: NSError? = sessionError as NSError? ?? download.error
+        // Handle possible HTTP errors
+        if let response = task.response as? HTTPURLResponse {
+            // NSURLErrorDomain errors are not supposed to be reported by this delegate
+            // according to https://developer.apple.com/library/ios/documentation/Cocoa/Conceptual/URLLoadingSystem/NSURLSessionConcepts/NSURLSessionConcepts.html
+            // so let's ignore them as they sometimes appear there for now. (But WTF?)
+            if !validateResponse(response) && (error == nil || error!.domain == NSURLErrorDomain) {
+                error = NSError(domain: kTCBlobDownloadErrorDomain,
+                                code: TCBlobDownloadError.tcBlobDownloadHTTPError.rawValue,
+                                userInfo: [kTCBlobDownloadErrorDescriptionKey: "Erroneous HTTP status code: \(response.statusCode)",
+                                    kTCBlobDownloadErrorFailingURLKey: task.originalRequest!.url!,
+                                    kTCBlobDownloadErrorHTTPStatusKey: response.statusCode])
             }
-            
-            // Remove the reference to the download
-            self.downloads.removeValue(forKey: task.taskIdentifier)
-            download.delete()
-            
-            DispatchQueue.main.async {
-                download.delegate?.download(download, didFinishWithError: error, atLocation: download.resultingURL)
-                download.completion?(download, error, download.resultingURL)
-                return
-            }
+        }
+        
+        // Remove the reference to the download
+        self.downloads.removeValue(forKey: task.taskIdentifier)
+        download.delete()
+        
+        DispatchQueue.main.async {
+            download.delegate?.download(download, didFinishWithError: error, atLocation: download.resultingURL)
+            download.completion?(download, error, download.resultingURL)
+            return
         }
     }
 
