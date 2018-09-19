@@ -10,27 +10,27 @@ let kTCBlobDownloadQueueKey = "com.tcblobdownloadswift.queue"
 
 import Foundation
 
-public typealias progressionHandler = ((_ progress: Float, _ totalBytesWritten: Int64, _ totalBytesExpectedToWrite: Int64) -> Void)!
-public typealias completionHandler = ((_ download: TCBlobDownload, _ error: NSError?, _ location: URL?) -> Void)!
+public typealias progressionHandler = ((_ progress: Float, _ totalBytesWritten: Int64, _ totalBytesExpectedToWrite: Int64) -> Void)
+public typealias completionHandler = ((_ download: TCBlobDownload, _ error: NSError?, _ location: URL?) -> Void)
 
 open class TCBlobDownload {
     /// The underlying download task.
-    open let downloadTask: URLSessionDownloadTask
+    public let downloadTask: URLSessionDownloadTask
 
     /// An optional delegate to get notified of events.
     open weak var delegate: TCBlobDownloadDelegate?
 
     /// An optional progression closure periodically executed when a chunk of data has been received.
-    open var progression: progressionHandler
+    open var progression: progressionHandler?
 
     /// An optional completion closure executed when a download was completed by the download task.
-    open var completion: completionHandler
+    open var completion: completionHandler?
 
     /// An optional file name set by the user.
     fileprivate let preferedFileName: String?
 
     /// An optional destination path for the file. If nil, the file will be downloaded in the current user temporary directory.
-    open let directory: URL?
+    public let directory: URL?
 
     /// Will contain an error if the downloaded file couldn't be moved to its final destination.
     var error: NSError?

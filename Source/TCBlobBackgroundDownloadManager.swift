@@ -8,7 +8,7 @@
 
 open class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
 
-    open static let sharedBackground = TCBlobBackgroundDownloadManager()
+    public static let sharedBackground = TCBlobBackgroundDownloadManager()
 
     convenience init() {
         let config = URLSessionConfiguration.background(withIdentifier: "tcblobdownloadmanager.background.session")

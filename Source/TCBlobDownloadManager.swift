@@ -24,7 +24,7 @@ open class TCBlobDownloadManager {
     /**
         A shared instance of `TCBlobDownloadManager`.
     */
-    open static let sharedInstance = TCBlobDownloadManager()
+    public static let sharedInstance = TCBlobDownloadManager()
 
     /// Instance of the underlying class implementing `NSURLSessionDownloadDelegate`.
     open var delegate: DownloadDelegate
