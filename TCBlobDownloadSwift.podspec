@@ -7,9 +7,10 @@ Pod::Spec.new do |s|
   s.author       = { "Thibault Charbonnier" => "thibaultcha@me.com" }
 
   s.ios.deployment_target = "9.0"
+  s.swift_version = '4.2'
 
   s.source       = {
-    :git => "https://github.com/bonebox/TCBlobDownloadSwift.git",
+    :git => "https://github.com/Allogy/TCBlobDownloadSwift.git",
     :tag => s.version.to_s
   }
 
