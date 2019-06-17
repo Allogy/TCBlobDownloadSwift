@@ -161,6 +161,7 @@ extension TCBlobDownload: CustomStringConvertible {
             case .completed: state = "completed"
             case .canceling: state = "canceling"
             case .suspended: state = "suspended"
+            @unknown default: state = "suspended"
         }
         
         parts.append("TCBlobDownload")
