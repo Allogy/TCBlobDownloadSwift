@@ -273,7 +273,7 @@ extension TCBlobDownload {
     }
 
     func archive() -> TCBlobDownloadArchivable? {
-        if var tasks = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(self.sessionConfigurationIdentifier) {
+        if let tasks = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(self.sessionConfigurationIdentifier) {
             if let task = tasks[String(self.downloadTask.taskIdentifier)] {
                 return task
             }
