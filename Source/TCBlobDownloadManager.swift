@@ -181,7 +181,7 @@ extension TCBlobDownloadManager {
         let data = UserDefaults.standard.data(forKey: configurationIdentifier)
 
         if let d = data {
-            return NSKeyedUnarchiver.unarchiveObject(with: d)  as? [String : TCBlobDownloadArchivable]
+            return try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(d)  as? [String : TCBlobDownloadArchivable]
         }
         return nil
     }

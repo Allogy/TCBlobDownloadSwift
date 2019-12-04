@@ -209,7 +209,7 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
         let data = UserDefaults.standard.data(forKey: self.sessionConfigurationIdentifier)
 
         if let d = data {
-            return NSKeyedUnarchiver.unarchiveObject(with: d)  as? [String : TCBlobDownloadArchivable]
+            return try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(d) as? [String : TCBlobDownloadArchivable]
         }
         return nil
     }
@@ -222,7 +222,7 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
 
         downloads[taskIdentifier] = self
 
-        let archive = NSKeyedArchiver.archivedData(withRootObject: downloads)
+        let archive = try? NSKeyedArchiver.archivedData(withRootObject: downloads, requiringSecureCoding: false)
         UserDefaults.standard.set(archive, forKey: self.sessionConfigurationIdentifier)
         UserDefaults.standard.synchronize()
     }
@@ -235,7 +235,7 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
         if var d = TCBlobDownloadManager.taskQueueForSessionConfigurationIdentifier(sessionConfigurationIdentifier) {
             d.removeValue(forKey: taskIdentifier)
 
-            let archive = NSKeyedArchiver.archivedData(withRootObject: d)
+            let archive = try? NSKeyedArchiver.archivedData(withRootObject: d, requiringSecureCoding: true)
             UserDefaults.standard.set(archive, forKey: sessionConfigurationIdentifier)
             UserDefaults.standard.synchronize()
         }
