@@ -6,9 +6,11 @@
 //  Copyright (c) 2015 Allogy Interactive. All rights reserved.
 //
 
+import Foundation
+
 open class TCBlobBackgroundDownloadManager: TCBlobDownloadManager {
 
-    public static let sharedBackground = TCBlobBackgroundDownloadManager()
+	nonisolated(unsafe) public static let sharedBackground = TCBlobBackgroundDownloadManager()
 
     convenience init() {
         let config = URLSessionConfiguration.background(withIdentifier: "tcblobdownloadmanager.background.session")

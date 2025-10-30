@@ -13,7 +13,7 @@ import Foundation
 public typealias progressionHandler = ((_ progress: Float, _ totalBytesWritten: Int64, _ totalBytesExpectedToWrite: Int64) -> Void)
 public typealias completionHandler = ((_ download: TCBlobDownload, _ error: NSError?, _ location: URL?) -> Void)
 
-open class TCBlobDownload {
+open class TCBlobDownload: @unchecked Sendable {
     /// The underlying download task.
     public let downloadTask: URLSessionDownloadTask
 
@@ -116,7 +116,7 @@ open class TCBlobDownload {
 
         - parameter completionHandler: A completion handler that is called when the download has been successfully canceled. If the download is resumable, the completion handler is provided with a resumeData object.
     */
-    open func cancelWithResumeData(_ completionHandler: @escaping (Data?) -> Void) {
+	open func cancelWithResumeData(_ completionHandler: @escaping @Sendable (Data?) -> Void) {
         self.downloadTask.cancel(byProducingResumeData: completionHandler)
     }
 
@@ -124,7 +124,7 @@ open class TCBlobDownload {
     // TODO: instanciable TCBlobDownloads
 }
 
-public protocol TCBlobDownloadDelegate: class {
+public protocol TCBlobDownloadDelegate: AnyObject {
     /**
         Periodically informs the delegate that a chunk of data has been received (similar to `NSURLSession -URLSession:dataTask:didReceiveData:`).
     
@@ -174,7 +174,8 @@ extension TCBlobDownload: CustomStringConvertible {
     }
 }
 
-class TCBlobDownloadArchivable: NSObject, NSCoding {
+class TCBlobDownloadArchivable: NSObject, NSSecureCoding, @unchecked Sendable {
+    nonisolated(unsafe) static var supportsSecureCoding: Bool = true
     let taskIdentifier: String!
     let sessionConfigurationIdentifier: String!
     let fileName: String!
@@ -189,11 +190,11 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
     }
 
     required init?(coder aDecoder: NSCoder) {
-        self.taskIdentifier = aDecoder.decodeObject(forKey: "taskIdentifier") as? String
-        self.sessionConfigurationIdentifier = aDecoder.decodeObject(forKey: "sessionConfigurationIdentifier") as? String
-        self.fileName = aDecoder.decodeObject(forKey: "fileName") as? String
-        self.directory = aDecoder.decodeObject(forKey: "directory") as? String
-        self.resumeData = aDecoder.decodeObject(forKey: "resumeData") as? Data
+        self.taskIdentifier = aDecoder.decodeObject(of: NSString.self, forKey: "taskIdentifier") as String?
+        self.sessionConfigurationIdentifier = aDecoder.decodeObject(of: NSString.self, forKey: "sessionConfigurationIdentifier") as String?
+        self.fileName = aDecoder.decodeObject(of: NSString.self, forKey: "fileName") as String?
+        self.directory = aDecoder.decodeObject(of: NSString.self, forKey: "directory") as String?
+        self.resumeData = aDecoder.decodeObject(of: NSData.self, forKey: "resumeData") as Data?
         super.init()
     }
 
@@ -209,7 +210,7 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
         let data = UserDefaults.standard.data(forKey: self.sessionConfigurationIdentifier)
 
         if let d = data {
-            return try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(d) as? [String : TCBlobDownloadArchivable]
+            return try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSDictionary.self, NSString.self, TCBlobDownloadArchivable.self], from: d) as? [String : TCBlobDownloadArchivable]
         }
         return nil
     }
@@ -222,7 +223,7 @@ class TCBlobDownloadArchivable: NSObject, NSCoding {
 
         downloads[taskIdentifier] = self
 
-        let archive = try? NSKeyedArchiver.archivedData(withRootObject: downloads, requiringSecureCoding: false)
+        let archive = try? NSKeyedArchiver.archivedData(withRootObject: downloads, requiringSecureCoding: true)
         UserDefaults.standard.set(archive, forKey: self.sessionConfigurationIdentifier)
         UserDefaults.standard.synchronize()
     }
