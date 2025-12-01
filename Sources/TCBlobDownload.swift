@@ -209,8 +209,8 @@ class TCBlobDownloadArchivable: NSObject, NSSecureCoding, @unchecked Sendable {
     func taskQueue() -> [String: TCBlobDownloadArchivable]? {
         let data = UserDefaults.standard.data(forKey: self.sessionConfigurationIdentifier)
 
-        if let d = data {
-            return try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSDictionary.self, NSString.self, TCBlobDownloadArchivable.self], from: d) as? [String : TCBlobDownloadArchivable]
+        if let data {
+            return try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSDictionary.self, NSString.self, TCBlobDownloadArchivable.self], from: data) as? [String : TCBlobDownloadArchivable]
         }
         return nil
     }
@@ -224,8 +224,11 @@ class TCBlobDownloadArchivable: NSObject, NSSecureCoding, @unchecked Sendable {
         downloads[taskIdentifier] = self
 
         let archive = try? NSKeyedArchiver.archivedData(withRootObject: downloads, requiringSecureCoding: true)
-        UserDefaults.standard.set(archive, forKey: self.sessionConfigurationIdentifier)
-        UserDefaults.standard.synchronize()
+		
+		Task { @MainActor in
+			UserDefaults.standard.set(archive, forKey: self.sessionConfigurationIdentifier)
+			UserDefaults.standard.synchronize()
+		}
     }
 
     func delete() {
