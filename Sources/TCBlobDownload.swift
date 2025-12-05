@@ -240,8 +240,11 @@ class TCBlobDownloadArchivable: NSObject, NSSecureCoding, @unchecked Sendable {
             d.removeValue(forKey: taskIdentifier)
 
             let archive = try? NSKeyedArchiver.archivedData(withRootObject: d, requiringSecureCoding: true)
-            UserDefaults.standard.set(archive, forKey: sessionConfigurationIdentifier)
-            UserDefaults.standard.synchronize()
+			
+			Task { @MainActor in
+				UserDefaults.standard.set(archive, forKey: sessionConfigurationIdentifier)
+				UserDefaults.standard.synchronize()
+			}
         }
     }
 
