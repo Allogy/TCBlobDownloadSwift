@@ -243,10 +243,17 @@ public final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unch
 
 	public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         guard let download = self.downloads[downloadTask.taskIdentifier] else { return }
-        
+
+        // Check HTTP status code before moving file - don't save error responses
+        if let response = downloadTask.response as? HTTPURLResponse, !validateResponse(response) {
+            // Don't move the file for HTTP errors (4xx, 5xx, etc.)
+            // The error will be reported in didCompleteWithError
+            return
+        }
+
         var fileError: NSError?
         var resultingURL: NSURL?
-        
+
         do {
             try FileManager.default.replaceItem(at: download.destinationURL as URL, withItemAt: location, backupItemName: nil, options: [], resultingItemURL: &resultingURL)
             download.resultingURL = resultingURL as URL?
